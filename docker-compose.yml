@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    command: python3 app/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./apps:/code
+    ports:
+      - "8080:8000"
+    depends_on:
+      - db
+    tty: true
+    stdin_open: true
+    environment: 
+      MYSQL_NAME: django_development
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+      MYSQL_HOST: db
+  db:
+    image: mysql:5.7
+    volumes: 
+      - ./docker/data:/var/lib/mysql
+    environment: 
+      MYSQL_DATABASE: django_development
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "3306:3306"
