@@ -1,5 +1,12 @@
 # Starting django project
 
+- Commentout `command` in docker-compose.yml (if no app in apps)
+
+  ```diff
+  - command: python3 app/manage.py runserver 0.0.0.0:8000
+  # command: python3 app/manage.py runserver 0.0.0.0:8000
+  ```
+
 - Build and up container
 
   ```
