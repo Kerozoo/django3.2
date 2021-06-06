@@ -1,5 +1,12 @@
 # Starting django project
 
+- Commentout `command` in docker-compose.yml (if no app in apps)
+
+  ```diff
+  - command: python3 app/manage.py runserver 0.0.0.0:8000
+  # command: python3 app/manage.py runserver 0.0.0.0:8000
+  ```
+
 - Build and up container
 
   ```
@@ -66,3 +73,73 @@
   - Access local host
 
     http://localhost:8080/
+
+# Add `polls` application and urls
+
+  - Add `polls` application
+
+    ```
+    docker-compose exec app python app/manage.py startapp polls
+    ```
+
+  - Move apps/polls to apps/app/polls
+
+    ```diff
+    apps/
+      app/
+        ├ app/
+    +   ├ polls/
+        ├ manage.py
+    - polls/
+      requirements.txt
+    ```
+
+  - Add polls's url
+
+    - polls/views.py
+
+      ```
+      from django.http import HttpResponse
+
+
+      def index(request):
+          return HttpResponse("Hello, world. You're at the polls index.")
+      ```
+
+    - polls/urls.py(create file)
+
+      ```
+      from django.urls import path
+      from . import views
+
+
+      urlpatterns = [
+          path('', views.index, name='index'),
+      ]
+      ```
+
+    - app/app/urls.py
+
+      ```diff
+      - from django.urls import path
+
+      -urlpatterns = [
+      -    path('admin/', admin.site.urls),
+      -]
+
+      from django.urls import include, path
+
+      urlpatterns = [
+          path('polls/', include('polls.urls')),
+          path('admin/', admin.site.urls),
+      ]
+      ```
+
+  - Restart container then access to polls app
+
+    ```
+    docker-compose down
+    docker-compose up
+    ```
+
+    http://localhost:8080/polls
