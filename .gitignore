@@ -1,5 +1,5 @@
 ### Django ###
-
+__pycache__
 
 ### DB ###
 docker/*
