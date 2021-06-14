@@ -322,3 +322,199 @@
     >>> question.choice_set.count()
     3
     ```
+
+# Create `polls` functions
+
+  - Add urls for actions to polls/urls.py
+
+    ```python
+    from django.urls import path
+
+    from . import views
+
+    app_name = 'polls'
+    urlpatterns = [
+        # ex: /polls/
+        path('', views.index, name='index'),
+        # ex: /polls/5/
+        path('<int:question_id>/', views.detail, name='detail'),
+        # ex: /polls/5/results/
+        path('<int:question_id>/results/', views.results, name='results'),
+        # ex: /polls/5/vote/
+        path('<int:question_id>/vote/', views.vote, name='vote'),
+    ]
+    ```
+
+- ## Add index
+    
+  - Add index action to polls/views.py
+        
+    - Using `render` example
+
+      ```python
+      from django.shortcuts import render
+
+      from .models import Question
+
+
+      def index(request):
+          latest_question_list = Question.objects.order_by('-pub_date')[:5]
+          context = {'latest_question_list': latest_question_list}
+          return render(request, 'polls/index.html', context)
+      ```
+
+    - Using `HttpResponse` and `loader` example
+
+      ```python
+      from django.http import HttpResponse
+      from django.template import loader
+
+      from .models import Question
+
+      def index(request):
+          latest_question_list = Question.objects.order_by('-pub_date')[:5]
+          template = loader.get_template('polls/index.html')
+          context = {'latest_question_list': latest_question_list}
+          return HttpResponse(template.render(context, request))
+      ```
+
+  - Add index templates to `polls/templates/polls/index.html` (Create directories)
+
+    ```
+    {% if latest_question_list %}
+    <ul>
+        {% for question in latest_question_list %}
+        <li><a href="{% url 'polls:detail' question.id %}">{{ question.question_text }}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        <p>No polls are available.</p>
+    {% endif %}
+    ```
+
+  - Access local host
+
+    http://localhost:8080/polls/
+
+- ## Add detail
+    
+  - Add detail action with 404 to polls/views.py
+
+    - Using `get_object_or_404` example
+
+      ```python
+      from django.shortcuts import get_object_or_404, render
+
+      from .models import Question
+
+
+      def detail(request, question_id):
+          question = get_object_or_404(Question, pk=question_id)
+          return render(request, 'polls/detail.html', {'question': question})
+      ```
+        
+    - Using `Http404` example
+
+      ```python
+      from django.http import Http404
+      from django.shortcuts import render
+
+      from .models import Question
+
+
+      def detail(request, question_id):
+          try:
+              question = Question.objects.get(pk=question_id)
+          except Question.DoesNotExist:
+              raise Http404("Question does not exist")
+          return render(request, 'polls/detail.html', {'question': question})
+      ```
+
+  - Add vote mock action to polls/views.py for not to output AttributeError
+
+    ```python
+    from django.http import HttpResponse
+
+    def vote(request, question_id):
+        return HttpResponse("You're voting on question %s." % question_id)
+    ```
+
+  - Add detail templates to `polls/templates/polls/detail.html` (Create file)
+
+    ```
+    <form action="{% url 'polls:vote' question.id %}" method="post">
+        {% csrf_token %}
+        <fieldset>
+            <legend><h1>{{ question.question_text }}</h1></legend>
+            {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+            {% for choice in question.choice_set.all %}
+                <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
+                <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label><br>
+            {% endfor %}
+        </fieldset>
+        <input type="submit" value="Vote">
+    </form>
+    ```
+
+  - Access local host
+
+    - http://localhost:8080/polls/1/
+    - http://localhost:8080/polls/99999/
+
+- ## Add vote and results
+
+  - Add vote function to polls/views.py
+
+    ```python
+    from django.http import HttpResponseRedirect
+    from django.shortcuts import get_object_or_404, render
+    from django.urls import reverse
+
+    from .models import Choice, Question
+
+    def vote(request, question_id):
+        question = get_object_or_404(Question, pk=question_id)
+        try:
+            selected_choice = question.choice_set.get(pk=request.POST['choice'])
+        except (KeyError, Choice.DoesNotExist):
+            # Redisplay the question voting form.
+            return render(request, 'polls/detail.html', {
+                'question': question,
+                'error_message': "You didn't select a choice.",
+            })
+        else:
+            selected_choice.votes += 1
+            selected_choice.save()
+            # Always return an HttpResponseRedirect after successfully dealing
+            # with POST data. This prevents data from being posted twice if a
+            # user hits the Back button.
+            return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+    ```
+
+  - Add results action to polls/views.py
+
+    ```python
+    from django.shortcuts import render, get_object_or_404
+
+    def results(request, question_id):
+        question = get_object_or_404(Question, pk=question_id)
+        return render(request, 'polls/results.html', {'question': question})
+    ```
+
+  - Add results templates to `polls/templates/polls/results.html` (Create file)
+
+    ```
+    <h1>{{ question.question_text }}</h1>
+
+    <ul>
+        {% for choice in question.choice_set.all %}
+        <li>{{ choice.choice_text }} -- {{ choice.votes }} vote{{ choice.votes|pluralize }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{% url 'polls:detail' question.id %}">Vote again?</a>
+    ```
+
+  - Access local host then `vote`
+
+    - http://localhost:8080/polls/1/
