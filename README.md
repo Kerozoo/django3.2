@@ -518,3 +518,103 @@
   - Access local host then `vote`
 
     - http://localhost:8080/polls/1/
+
+# Testing `polls` model
+
+- ## Add `was_published_recently()` to Question model with bug
+
+  ```python
+  from django.db import models
+  from django.utils import timezone
+  import datetime
+
+  class Question(models.Model):
+      #…
+      def was_published_recently(self):
+          # This method returns True even on future dates (bug)
+          return self.pub_date >= timezone.now() - datetime.timedelta(days=1)
+  ```
+
+- ## Add test of `was_published_recently()` to polls/tests.py
+
+  - Add test
+
+    ```python
+    import datetime
+
+    from django.test import TestCase
+    from django.utils import timezone
+
+    from .models import Question
+
+
+    class QuestionModelTests(TestCase):
+
+        def test_was_published_recently_with_future_question(self):
+            """
+            was_published_recently() returns False for questions whose pub_date
+            is in the future.
+            """
+            time = timezone.now() + datetime.timedelta(days=30)
+            future_question = Question(pub_date=time)
+            self.assertIs(future_question.was_published_recently(), False)
+    ```
+
+  - Check the test is FAILED
+
+    - Exec test
+
+      ```
+      docker-compose exec app python app/manage.py test polls
+      ```
+
+    - Check the result
+
+      ```
+      Creating test database for alias 'default'...
+      System check identified no issues (0 silenced).
+      F
+      ======================================================================
+      FAIL: test_was_published_recently_with_future_question (polls.tests.QuestionModelTests)
+      was_published_recently() returns False for questions whose pub_date
+      ----------------------------------------------------------------------
+      Traceback (most recent call last):
+        File "/code/app/polls/tests.py", line 18, in test_was_published_recently_with_future_question
+          self.assertIs(future_question.was_published_recently(), False)
+      AssertionError: True is not False
+
+      ----------------------------------------------------------------------
+      Ran 1 test in 0.007s
+
+      FAILED (failures=1)
+      Destroying test database for alias 'default'...
+      ```
+
+- ## Fix bug of `was_published_recently()`
+
+  ```python
+  def was_published_recently(self):
+      now = timezone.now()
+      return now - datetime.timedelta(days=1) <= self.pub_date <= now
+  ```
+
+  - Check the test is OK
+
+    - Exec test
+
+      ```
+      docker-compose exec app python app/manage.py test polls
+      ```
+
+    - Check the result
+
+      ```
+      Creating test database for alias 'default'...
+      System check identified no issues (0 silenced).
+      .
+      ----------------------------------------------------------------------
+      Ran 1 test in 0.002s
+
+      OK
+      Destroying test database for alias 'default'...
+      ```
